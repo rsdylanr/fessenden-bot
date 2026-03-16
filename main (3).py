@@ -1,0 +1,129 @@
+import discord
+from discord.ext import commands, tasks
+import os
+import asyncio
+from dotenv import load_dotenv
+
+# Service Imports
+from services.database_service import DatabaseService
+from services.points_service import PointsService
+from services.event_service import EventService
+from services.calendar_service import CalendarService
+from services.trivia_service import TriviaService
+
+load_dotenv()
+
+class FessendenBot(commands.Bot):
+    def __init__(self):
+        # Intents.all() is required for tracking VCs and Members
+        super().__init__(command_prefix="!", intents=discord.Intents.all())
+        
+        # --- GLOBAL CONFIGURATION ---
+        self.owner_id_num = 716581384344567878  # <--- REPLACE WITH YOUR ID
+        self.renewal_channel_id = 987654321098765432  # <--- REPLACE WITH CHANNEL ID
+        
+        # Initialize Services
+        self.db = DatabaseService()
+        self.points = PointsService(self.db)
+        self.events = EventService()
+        self.calendar = CalendarService(self.db)
+        self.trivia = TriviaService()
+
+    async def setup_hook(self):
+        """Initializes database, loops, and cogs on startup."""
+        await self.db.initialize()
+        
+        # Start Background Tasks
+        self.attendance_loop.start()
+        self.reminder_loop.start()
+        self.renewal_reminder.start()
+        
+        # Load Cogs (Skips __init__.py to prevent crashes)
+        for f in os.listdir('./cogs'):
+            if f.endswith('.py') and f != "__init__.py":
+                try:
+                    await self.load_extension(f'cogs.{f[:-3]}')
+                    print(f"✅ Loaded {f}")
+                except Exception as e:
+                    print(f"❌ Failed to load {f}: {e}")
+
+    def is_owner_check(self, user_id: int):
+        """Global check for Developer/Owner status."""
+        return user_id == self.owner_id_num
+
+    # --- BACKGROUND LOOPS ---
+
+    @tasks.loop(minutes=1)
+    async def attendance_loop(self):
+        """Tracks points for users in Voice Channels during events."""
+        if self.events.is_active:
+            for g in self.guilds:
+                for vc in g.voice_channels + g.stage_channels:
+                    if vc.members:
+                        ids = [m.id for m in vc.members if not m.bot]
+                        self.events.record_tick(ids)
+
+    @tasks.loop(minutes=1)
+    async def reminder_loop(self):
+        """Sends a notification for calendar events starting in 1 hour."""
+        reminders = await self.calendar.check_reminders()
+        if reminders:
+            # Reusing the renewal channel for simplicity, or define a new one
+            chan = self.get_channel(self.renewal_channel_id)
+            if chan:
+                for name, desc in reminders:
+                    em = discord.Embed(
+                        title="📅 Event Starting Soon!", 
+                        description=f"**{name}** starts in 1 hour!\n{desc if desc else ''}", 
+                        color=0xF1C40F
+                    )
+                    await chan.send(content="@everyone", embed=em)
+
+    @tasks.loop(hours=23)
+    async def renewal_reminder(self):
+        """Pings the owner every 23 hours to renew Pterodactyl hosting."""
+        await self.wait_until_ready()
+        chan = self.get_channel(self.renewal_channel_id)
+        owner = self.get_user(self.owner_id_num)
+        
+        if chan and owner:
+            embed = discord.Embed(
+                title="🚨 Pterodactyl Renewal Notice",
+                description=(
+                    f"Hey {owner.mention}, it has been 23 hours!\n\n"
+                    "Please log into your Pterodactyl panel and click the **Renew** button "
+                    "to prevent the bot from going offline."
+                ),
+                color=discord.Color.red()
+            )
+            await chan.send(content=owner.mention, embed=embed)
+
+    @renewal_reminder.before_loop
+    @attendance_loop.before_loop
+    @reminder_loop.before_loop
+    async def before_loops(self):
+        """Ensures the bot is ready before starting background tasks."""
+        await self.wait_until_ready()
+
+# --- INSTANTIATION & SYNC ---
+
+bot = FessendenBot()
+
+@bot.command()
+async def sync(ctx):
+    """Manual trigger to sync Slash Commands to Discord's API."""
+    if not bot.is_owner_check(ctx.author.id):
+        return await ctx.send("❌ You do not have permission to sync.")
+    
+    synced = await bot.tree.sync()
+    await ctx.send(f"🌍 Successfully synced {len(synced)} global slash commands.")
+
+async def main():
+    async with bot:
+        await bot.start(os.getenv('TOKEN'))
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
