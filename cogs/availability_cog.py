@@ -2,33 +2,15 @@ import discord
 from discord.ext import commands
 from services.time_service import TimeService
 
-class AvailabilityModal(discord.ui.Modal, title="Set Availability Time"):
-    start_time = discord.ui.TextInput(label="Start Time (e.g. 3:00 PM)", placeholder="3:30 PM", required=True)
-    end_time = discord.ui.TextInput(label="End Time (e.g. 5:00 PM)", placeholder="5:00 PM", required=True)
-
-    def __init__(self, day, bot):
-        super().__init__()
-        self.day = day
+class AvailabilityCog(commands.Cog):
+    def __init__(self, bot):
         self.bot = bot
 
-    async def on_submit(self, interaction: discord.Interaction):
-        start = TimeService.parse_time(self.start_time.value)
-        end = TimeService.parse_time(self.end_time.value)
-
-        if not start or not end:
-            await interaction.response.send_message("❌ Invalid time format! Please include AM or PM (e.g., 3:00 PM).", ephemeral=True)
-            return
-
-        # Pass viewing to the final Status Buttons
-        view = StatusSelectionView(self.bot, interaction.user.id, self.day, start, end)
-        await interaction.response.send_message(
-            f"✅ Time set for **{self.day.title()}** ({start} - {end}). Please select your status preference below:", 
-            view=view, 
-            ephemeral=True
-        )
-
-class DayDropdown(discord.ui.Select):
-    def __init__(self, bot):
+    @commands.command(name="setschedule")
+    async def setschedule(self, ctx):
+        """Triggers the interactive scheduling UI dropdown using the UIService."""
+        
+        # 1. Define the Options for the Dropdown
         options = [
             discord.SelectOption(label="Monday", value="monday"),
             discord.SelectOption(label="Tuesday", value="tuesday"),
@@ -38,66 +20,82 @@ class DayDropdown(discord.ui.Select):
             discord.SelectOption(label="Saturday", value="saturday"),
             discord.SelectOption(label="Sunday", value="sunday"),
         ]
-        super().__init__(placeholder="Choose a day to set schedule...", options=options)
-        self.bot = bot
 
-    async def callback(self, interaction: discord.Interaction):
-        day = self.values[0]
-        await interaction.response.send_modal(AvailabilityModal(day, self.bot))
+        # 2. Define what happens when they pick a day (Open the Modal)
+        async def dropdown_callback(interaction: discord.Interaction, values: list):
+            day = values[0]
+            await self._open_time_modal(interaction, day)
 
+        # 3. Ask the UI Factory to build the dropdown view
+        view = self.bot.ui.create_dropdown_view(
+            placeholder="Choose a day to set schedule...",
+            options=options,
+            callback=dropdown_callback
+        )
 
-class StatusSelectionView(discord.ui.View):
-    def __init__(self, bot, user_id, day, start, end):
-        super().__init__(timeout=60)
-        self.bot = bot
-        self.user_id = user_id
-        self.day = day
-        self.start = start
-        self.end = end
-        self.is_pref = False
-
-    @discord.ui.button(label="YES (+10)", style=discord.ButtonStyle.green)
-    async def yes_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.bot.availability.add_availability(self.user_id, self.day, self.start, self.end, "YES", self.is_pref)
-        await interaction.response.edit_message(content=f"💾 Saved: **YES** for {self.day.title()} ({self.start}-{self.end})", view=None)
-
-    @discord.ui.button(label="MAYBE (+3)", style=discord.ButtonStyle.blurple)
-    async def maybe_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.bot.availability.add_availability(self.user_id, self.day, self.start, self.end, "MAYBE", self.is_pref)
-        await interaction.response.edit_message(content=f"💾 Saved: **MAYBE** for {self.day.title()} ({self.start}-{self.end})", view=None)
-
-    @discord.ui.button(label="NO (-100)", style=discord.ButtonStyle.red)
-    async def no_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.bot.availability.add_availability(self.user_id, self.day, self.start, self.end, "NO", False)
-        await interaction.response.edit_message(content=f"💾 Saved: **NO** for {self.day.title()} ({self.start}-{self.end})", view=None)
-
-    @discord.ui.button(label="Mark Preferred (+5)", style=discord.ButtonStyle.grey, emoji="⭐")
-    async def pref_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.is_pref = not self.is_pref
-        button.style = discord.ButtonStyle.success if self.is_pref else discord.ButtonStyle.grey
-        await interaction.response.edit_message(view=self)
-
-
-class AvailabilityCog(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @commands.command(name="setschedule")
-    async def setschedule(self, ctx):
-        """Triggers the interactive scheduling UI dropdown."""
-        view = discord.ui.View()
-        view.add_item(DayDropdown(self.bot))
         await ctx.send("📅 Select a day from the menu below to set your availability:", view=view)
+
+
+    async def _open_time_modal(self, interaction: discord.Interaction, day: str):
+        """Builds and opens the time input modal using the UIService."""
+        
+        inputs = [
+            {"label": "Start Time (e.g. 3:00 PM)", "placeholder": "3:30 PM", "required": True},
+            {"label": "End Time (e.g. 5:00 PM)", "placeholder": "5:00 PM", "required": True}
+        ]
+
+        # What happens when they submit the modal
+        async def modal_callback(modal_interaction: discord.Interaction, values: dict):
+            start_raw = values.get("Start Time (e.g. 3:00 PM)")
+            end_raw = values.get("End Time (e.g. 5:00 PM)")
+
+            start = TimeService.parse_time(start_raw)
+            end = TimeService.parse_time(end_raw)
+
+            if not start or not end:
+                await modal_interaction.response.send_message("❌ Invalid time format! Please include AM or PM (e.g., 3:00 PM).", ephemeral=True)
+                return
+
+            await self._send_status_buttons(modal_interaction, day, start, end)
+
+        # Open it
+        modal = self.bot.ui.create_modal(title=f"Set Time for {day.title()}", inputs=inputs, callback=modal_callback)
+        await interaction.response.send_modal(modal)
+
+
+    async def _send_status_buttons(self, interaction: discord.Interaction, day: str, start: str, end: str):
+        """Sends the final status buttons using the UIService."""
+
+        # Shared saver logic to reduce duplicated code
+        async def save_status(btn_interaction: discord.Interaction, status: str):
+            await self.bot.availability.add_availability(btn_interaction.user.id, day, start, end, status)
+            await btn_interaction.response.edit_message(content=f"💾 Saved: **{status}** for {day.title()} ({start}-{end})", view=None)
+
+        buttons = [
+            {"label": "YES (+10)", "style": discord.ButtonStyle.green, "callback": lambda i: save_status(i, "YES")},
+            {"label": "MAYBE (+3)", "style": discord.ButtonStyle.blurple, "callback": lambda i: save_status(i, "MAYBE")},
+            {"label": "NO (-100)", "style": discord.ButtonStyle.red, "callback": lambda i: save_status(i, "NO")}
+        ]
+
+        view = self.bot.ui.create_button_view(buttons)
+        await interaction.response.send_message(
+            f"✅ Time set for **{day.title()}** ({start} - {end}). Select your status below:", 
+            view=view, 
+            ephemeral=True
+        )
+
 
     @commands.command(name="besttime")
     async def besttime(self, ctx, day: str):
         """Checks the highest score for a timeframe on a given day."""
         best = await self.bot.availability.get_best_time(day)
+        
         if best:
             start, end, score = best
             await ctx.send(f"🏆 The best time for **{day.title()}** is **{start} - {end}** (Score: {score})")
         else:
             await ctx.send(f"🤷 No schedules found for **{day.title()}** yet.")
+
 
 async def setup(bot):
     await bot.add_cog(AvailabilityCog(bot))
