@@ -2,7 +2,7 @@ import discord
 from datetime import datetime
 
 class LoggingService:
-    def __init__(self, bot, log_channel_id: int):
+    def __init__(self, bot, log_channel_id: int=1484629417908109462):
         self.bot = bot
         self.log_channel_id = log_channel_id
 
