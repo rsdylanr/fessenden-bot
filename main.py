@@ -5,7 +5,7 @@ import asyncio
 from dotenv import load_dotenv
 
 # Service Imports
-from services.database_service import DatabaseService
+from services.cloud_db_service import CloudDatabaseService as DatabaseService
 from services.points_service import PointsService
 from services.event_service import EventService
 from services.calendar_service import CalendarService
