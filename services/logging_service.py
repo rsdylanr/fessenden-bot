@@ -2,9 +2,9 @@ import discord
 from datetime import datetime
 
 class LoggingService:
-    def __init__(self, bot, log_channel_id: int=1484629417908109462):
+    def __init__(self, bot):
         self.bot = bot
-        self.log_channel_id = log_channel_id
+        self.log_channel_id = 1484629417908109462
 
     async def _send_log(self, title: str, description: str, color: discord.Color, fields: list = None):
         """Internal helper to send a beautiful embed to the log channel."""
