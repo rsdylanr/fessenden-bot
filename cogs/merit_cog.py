@@ -24,26 +24,31 @@ class MeritCog(commands.Cog):
         )
         await ctx.send(embed=embed)
 
-   @commands.command(name="givemerit")
+    @commands.command(name="givemerit")
     async def givemerit(self, ctx, member: discord.Member, amount: int):
-        # 🚩 Check your custom Supabase flag instead of Discord roles!
+        """Award merits using Supabase word-flags."""
+        # Check custom cloud flag
         can_give = await self.bot.permissions.check_permission(ctx.author.id, "merits.admin")
         
         if not can_give:
             await ctx.send("❌ You do not have the `merits.admin` flag to do that.")
             return
 
+        if amount <= 0:
+            await ctx.send("❌ You must award a positive number of merits!")
+            return
+
         await self.bot.db.add_merits(member.id, amount)
         await ctx.send(f"✅ Awarded **{amount}** merits to {member.mention} in the cloud!")
+
     @commands.command(name="removemerit")
     @commands.has_permissions(administrator=True)
     async def removemerit(self, ctx, member: discord.Member, amount: int):
-        """(Admin Only) Deducts merits from a user."""
+        """(Admin Only) Deducts merits from a user using standard Discord permissions."""
         if amount <= 0:
             await ctx.send("❌ You must deduct a positive number of merits!")
             return
 
-        # Passing a negative amount to our add_merits function subtracts it!
         await self.bot.db.add_merits(member.id, -amount)
         await ctx.send(f"❌ Deducted **{amount}** merits from {member.mention} in the cloud.")
 
