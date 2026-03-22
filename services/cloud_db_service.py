@@ -75,3 +75,20 @@ class CloudDatabaseService:
             rows = await conn.fetch(query, *args)
             # Converts asyncpg record types into standard tuples so your old code doesn't break
             return [tuple(row.values()) for row in rows]
+        # --- 📈 MERIT SYSTEM LOGIC ---
+
+    async def get_merits(self, user_id: int) -> int:
+        """Gets a user's current merit balance. Defaults to 0 if not found."""
+        res = await self.fetch_all("SELECT merit_balance FROM users WHERE user_id = ?", user_id)
+        return res[0][0] if res else 0
+
+    async def add_merits(self, user_id: int, amount: int):
+        """Adds (or subtracts) merits from a user."""
+        await self.run_query("""
+            INSERT INTO users (user_id, merit_balance) VALUES (?, ?)
+            ON CONFLICT (user_id) DO UPDATE SET merit_balance = users.merit_balance + excluded.merit_balance
+        """, user_id, amount)
+
+    async def get_leaderboard(self, limit: int = 10):
+        """Fetches the top users by merit balance."""
+        return await self.fetch_all("SELECT user_id, merit_balance FROM users ORDER BY merit_balance DESC LIMIT ?", limit)
