@@ -1,4 +1,3 @@
-# Last Updated: 3/26/2026 at 6:05 PM -> March 26 2026 at 6:05 PM
 import discord
 from discord.ext import commands, tasks
 import os
@@ -6,7 +5,7 @@ import asyncio
 import traceback
 from dotenv import load_dotenv
 
-# Service Imports (Kept exactly as you had them)
+# Service Imports (Kept exactly as your original architecture)
 from services.cloud_db_service import CloudDatabaseService as DatabaseService
 from services.points_service import PointsService
 from services.event_service import EventService
@@ -17,12 +16,12 @@ load_dotenv()
 
 class FessendenBot(commands.Bot):
     def __init__(self):
-        # Intents.all() is required for tracking VCs and Members
+        # Intents.all() is required for tracking Voice Channels and Members
         super().__init__(command_prefix="!", intents=discord.Intents.all())
         
         # --- GLOBAL CONFIGURATION ---
         self.owner_id_num = 716581384344567878
-        self.renewal_channel_id = 987654321098765432  # <--- REPLACE WITH CHANNEL ID
+        self.renewal_channel_id = 987654321098765432  # <--- REPLACE WITH YOUR CHANNEL ID
         
         # Initialize Services
         self.db = DatabaseService()
@@ -61,7 +60,7 @@ class FessendenBot(commands.Bot):
         """Global check for Developer/Owner status."""
         return user_id == self.owner_id_num
 
-    # --- BACKGROUND LOOPS (Untouched, exactly as you provided) ---
+    # --- BACKGROUND LOOPS ---
 
     @tasks.loop(minutes=1)
     async def attendance_loop(self):
@@ -220,7 +219,6 @@ async def refresh_all_cogs(ctx):
             except Exception as e:
                 results.append(f"❌ `{cog_name}` failed: `{str(e)}`")
 
-    # Group output to avoid spamming
     output = "\n".join(results)
     if len(output) > 2000:
         await ctx.send("✅ System purge complete. (Output too large to display, check logs).")
@@ -235,9 +233,9 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        async with asyncio.Runner() as runner:
-            runner.run(main())
+        # Standard asyncio run loop that works on all Python versions
+        asyncio.run(main())
     except KeyboardInterrupt:
-        pass
+        print("🛑 Bot shutting down manually.")
     except Exception as e:
         print(f"🚨 Bot crashed with critical startup error: {e}")
