@@ -12,3 +12,6 @@ __pycache__/
 # Environments
 venv/
 .venv/
+
+# other
+old_main_2026.py
