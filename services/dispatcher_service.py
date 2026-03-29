@@ -3,17 +3,16 @@ class DispatcherService:
         self.bot = bot
 
     async def handle_message(self, message):
-        if message.author.bot: return
-
-        # Admin Bypass
-        if message.author.guild_permissions.administrator:
-            await self.bot.process_commands(message)
+        # 1. Ignore bots
+        if message.author.bot: 
             return
 
-        # Context Analysis (# $ *)
+        # 2. Run your # $ * Analysis
         result = await self.bot.context.analyze(message)
         
         if result and result["verdict"] == "INAPPROPRIATE":
             await self.bot.context.log_violation(message, result)
-        else:
-            await self.bot.process_commands(message)
+            return # Stop here so the command doesn't run
+
+        # 3. CRITICAL: This is what makes !commands work
+        await self.bot.process_commands(message)
