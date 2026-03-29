@@ -1,43 +1,34 @@
+import discord
+from discord import app_commands
 from discord.ext import commands
 
 class FilterManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="filter")
-    async def manage_filter(self, ctx, action: str, path_str: str, *, value: str = None):
-        """
-        Usage: 
-        !filter add_word Links/Malicious "badsite.com"
-        !filter set_action Offensive/Slurs "Instant_Ban"
-        """
-        if ctx.author.id not in self.bot.filter.masters:
-            return await ctx.send("❌ Access Denied.")
-
-        path = path_str.split("/")
-        node = self.bot.filter._get_node(path)
-        
+    @app_commands.command(name="filter_add", description="Add a word to the filter cloud")
+    @app_commands.describe(path="e.g. Offensive/Slurs", word="The word to ban")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def filter_add(self, interaction: discord.Interaction, path: str, word: str):
+        node = self.bot.filter.get_node(path)
         if not node:
-            return await ctx.send(f"❌ Path `{path_str}` not found in JSON tree.")
+            return await interaction.response.send_message(f"❌ Path `{path}` not found.", ephemeral=True)
 
-        if action == "add_word":
-            node.setdefault("Words", []).append(value)
-            msg = f"✅ Added word `{value}` to `{path_str}`"
+        if "Words" not in node: node["Words"] = []
+        node["Words"].append(word)
         
-        elif action == "add_regex":
-            node.setdefault("Regex", []).append(value)
-            msg = f"✅ Added regex `{value}` to `{path_str}`"
-            
-        elif action == "set_action":
-            node.setdefault("Settings", {})["Action"] = value
-            msg = f"✅ Set action for `{path_str}` to `{value}`"
-        
-        else:
-            return await ctx.send("❌ Unknown action. Use `add_word`, `add_regex`, or `set_action`.")
+        await self.bot.filter.save()
+        await interaction.response.send_message(f"✅ Added `{word}` to `{path}`.", ephemeral=True)
 
-        # Save back to Supabase
-        await self.bot.filter.save_to_cloud()
-        await ctx.send(msg)
+    @app_commands.command(name="filter_list", description="View words in a specific category")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def filter_list(self, interaction: discord.Interaction, path: str):
+        node = self.bot.filter.get_node(path)
+        if not node or "Words" not in node:
+            return await interaction.response.send_message("❌ Category empty or not found.", ephemeral=True)
+        
+        words_list = ", ".join(node["Words"])
+        await interaction.response.send_message(f"📁 **{path}**: {words_list}", ephemeral=True)
 
 async def setup(bot):
-    await bot.add_cog(FilterMgmt(bot))
+    await bot.add_cog(FilterManagement(bot))
