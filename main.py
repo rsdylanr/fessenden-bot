@@ -11,6 +11,7 @@ from services.points_service import PointsService
 from services.event_service import EventService
 from services.calendar_service import CalendarService
 from services.trivia_service import TriviaService
+from services.content_filter_service import ContentFilterService
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ class FessendenBot(commands.Bot):
         
         # Load Cogs Dynamically
         await self.load_all_extensions()
+        await bot.ContentFilterService.sync
 
     async def load_all_extensions(self):
         """Discovers and loads all cogs inside the /cogs directory."""
