@@ -39,8 +39,8 @@ class FessendenBot(commands.Bot):
         self.filter = ContentFilterService(self)
         self.context = ContextService(self)
         self.dispatcher = DispatcherService(self)
-        self.sensor = GameSensorService()
-        self.stats = StatsService()
+        self.sensor = GameSensorService(self)
+        self.stats = StatsService(self)
         self.message_service = MessageService(self)
 
     async def setup_hook(self):
