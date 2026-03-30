@@ -51,6 +51,7 @@ class GameEngine(commands.Cog):
         try:
             msg = await self.bot.wait_for('message', check=check, timeout=30.0)
             await channel.send(f"🏆 {msg.author.mention} got it! The word was **{original}**.")
+            self.bot.stats.record_win(message.author.id)
         except asyncio.TimeoutError:
             await channel.send(f"⏰ Time's up! The word was **{original}**.")
 
@@ -65,6 +66,7 @@ class GameEngine(commands.Cog):
         try:
             msg = await self.bot.wait_for('message', check=check, timeout=15.0)
             await channel.send(f"⚡ {msg.author.mention} was the fastest! Answer: **{answer}**")
+            self.bot.stats.record_win(message.author.id)
         except asyncio.TimeoutError:
             await channel.send(f"⏰ No one answered in time. The answer was **{answer}**.")
 
