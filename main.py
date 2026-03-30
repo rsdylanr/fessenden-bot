@@ -16,7 +16,7 @@ from services.context_service import ContextService
 from services.dispatcher_service import DispatcherService  # <--- Added
 from services.game_sensor_service import GameSensorServicec
 from services.stats_service import StatsService
-
+from services.message_service import MessageService
 load_dotenv()
 
 class FessendenBot(commands.Bot):
@@ -41,6 +41,7 @@ class FessendenBot(commands.Bot):
         self.dispatcher = DispatcherService(self)
         self.sensor = GameSensorService()
         self.stats = StatsService()
+        self.message_service = MessageService(self)
 
     async def setup_hook(self):
         """Initializes database, loops, and cogs on startup."""
