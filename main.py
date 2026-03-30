@@ -63,6 +63,7 @@ class FessendenBot(commands.Bot):
         The Central Orchestrator. 
         All messages pass through the Dispatcher for Filter/Context analysis.
         """
+        self.sensor.record_activity(message.channel.id
         await self.dispatcher.handle_message(message)
 
     # --- REST OF YOUR BACKGROUND LOOPS & COG LOADING LOGIC ---
