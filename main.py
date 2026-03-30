@@ -14,6 +14,7 @@ from services.trivia_service import TriviaService
 from services.content_filter_service import ContentFilterService
 from services.context_service import ContextService
 from services.dispatcher_service import DispatcherService  # <--- Added
+from services.game_sensor_service import GameSensorServicec
 
 load_dotenv()
 
@@ -36,6 +37,7 @@ class FessendenBot(commands.Bot):
         self.filter = ContentFilterService(self)
         self.context = ContextService(self)
         self.dispatcher = DispatcherService(self)
+        self.sensor = GameSensorService()
 
     async def setup_hook(self):
         """Initializes database, loops, and cogs on startup."""
