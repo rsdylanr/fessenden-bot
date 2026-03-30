@@ -24,7 +24,8 @@ class FessendenBot(commands.Bot):
         
         # --- GLOBAL CONFIGURATION ---
         self.owner_id_num = 716581384344567878
-        self.renewal_channel_id = 987654321098765432 
+        self.renewal_channel_id = 987654321098765432
+        self.games_channel_id =
         
         # Initialize Core Services
         self.db = DatabaseService()
