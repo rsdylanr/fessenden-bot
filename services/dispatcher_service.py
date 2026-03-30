@@ -6,7 +6,8 @@ class DispatcherService:
         # 1. Ignore bots
         if message.author.bot: 
             return
-
+        # Update Game Channel Heartbeat
+        self.bot.sensor.record_activity(message.channel.id)
         # 2. Run your # $ * Analysis
         result = await self.bot.context.analyze(message)
         
