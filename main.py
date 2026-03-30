@@ -15,6 +15,7 @@ from services.content_filter_service import ContentFilterService
 from services.context_service import ContextService
 from services.dispatcher_service import DispatcherService  # <--- Added
 from services.game_sensor_service import GameSensorServicec
+from services.stats_service import StatsService
 
 load_dotenv()
 
@@ -39,6 +40,7 @@ class FessendenBot(commands.Bot):
         self.context = ContextService(self)
         self.dispatcher = DispatcherService(self)
         self.sensor = GameSensorService()
+        self.stats = StatsService()
 
     async def setup_hook(self):
         """Initializes database, loops, and cogs on startup."""
@@ -63,6 +65,7 @@ class FessendenBot(commands.Bot):
         The Central Orchestrator. 
         All messages pass through the Dispatcher for Filter/Context analysis.
         """
+        self.stats.record_message(message.author.id)
         self.sensor.record_activity(message.channel.id
         await self.dispatcher.handle_message(message)
 
