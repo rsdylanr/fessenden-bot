@@ -67,7 +67,7 @@ class FessendenBot(commands.Bot):
         All messages pass through the Dispatcher for Filter/Context analysis.
         """
         self.stats.record_message(message.author.id)
-        self.sensor.record_activity(message.channel.id
+        self.sensor.record_activity(message.channel.id)
         await self.dispatcher.handle_message(message)
 
     # --- REST OF YOUR BACKGROUND LOOPS & COG LOADING LOGIC ---
