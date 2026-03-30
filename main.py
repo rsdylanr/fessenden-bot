@@ -14,7 +14,7 @@ from services.trivia_service import TriviaService
 from services.content_filter_service import ContentFilterService
 from services.context_service import ContextService
 from services.dispatcher_service import DispatcherService  # <--- Added
-from services.game_sensor_service import GameSensorServicec
+from services.game_sensor_service import GameSensorService
 from services.stats_service import StatsService
 from services.message_service import MessageService
 load_dotenv()
