@@ -1,0 +1,15 @@
+{
+    "en": {
+        "GENERIC_SUCCESS": "Operation completed successfully.",
+        "GENERIC_ERROR": "An unexpected system interruption occurred.",
+        "LOADING_DATA": "⏳ Processing and fetching data...",
+        "PAGINATION_FOOTER": "Page {current}/{total} | Ref: {ref}",
+        "NATION_REGISTERED": "Nation '{name}' has been officially recognized!",
+        "CARD_FOUND": "Found your {card_name} in the vault!"
+    },
+    "mc_theme": {
+        "GENERIC_SUCCESS": "Creeper averted! Success.",
+        "LOADING_DATA": "⛏️ Mining for data...",
+        "NATION_REGISTERED": "🏰 Long live the kingdom of {name}!"
+    }
+}
