@@ -1,49 +1,56 @@
-import re
-import discord
+import asyncio
+import logging
 
 class ContextService:
     def __init__(self, bot):
         self.bot = bot
-        self.pronouns = {"you", "your", "you're", "youre", "u", "ur", "he", "him", "his", "she", "her", "hers", "they", "them", "theirs"}
+        self.logger = logging.getLogger("fessenden.context")
 
-    async def analyze(self, message: discord.Message):
-        content = message.content.lower()
-        curse_word, category = self.bot.filter.get_match(content)
-        
-        if not curse_word: return None
+    async def analyze(self, message):
+        """
+        Pure Deterministic Analysis.
+        Relies 100% on the Recursive Filter Tree (Supabase).
+        No external AI or Sentiment APIs.
+        """
+        text = message.content
+        if not text or len(text.strip()) == 0:
+            return {"verdict": "CLEAN"}
 
-        # Tokenization (# = Name, $ = Curse, * = Pronoun)
-        tokens = content.split()
-        template = []
-        is_directed = False
+        # --- STEP 1: THE RECURSIVE FILTER CHECK ---
+        # This uses your get_match logic with Regex Word Boundaries.
+        try:
+            found_word, category = self.bot.filter.get_match(text)
+            
+            if found_word:
+                return {
+                    "verdict": "INAPPROPRIATE", 
+                    "reason": f"Filtered Word: {found_word}", 
+                    "source": category
+                }
+        except Exception as e:
+            print(f"⚠️ Filter Execution Error: {e}")
+            # If the filter fails, we fail-safe to CLEAN to keep the bot alive
+            return {"verdict": "CLEAN"}
 
-        for word in tokens:
-            clean = re.sub(r'[^\w\s]', '', word)
-            if clean == curse_word.lower() or curse_word.lower() in clean:
-                template.append("$")
-            elif any(m.name.lower() in word or m.display_name.lower() in word for m in message.mentions):
-                template.append("#")
-                is_directed = True
-            elif clean in self.pronouns:
-                template.append("*")
-                is_directed = True
-            else:
-                template.append(word)
-
-        if is_directed:
-            return {
-                "verdict": "INAPPROPRIATE",
-                "template": " ".join(template),
-                "category": category,
-                "word": curse_word
-            }
+        # If nothing in the tree is matched, the message is safe.
         return {"verdict": "CLEAN"}
 
     async def log_violation(self, message, result):
-        log_channel = self.bot.get_channel(123456789) # REPLACE THIS ID
-        embed = discord.Embed(title="Targeted Insult Detected", color=0xFF4444)
-        embed.add_field(name="User", value=message.author.mention)
-        embed.add_field(name="Template", value=f"`{result['template']}`")
-        embed.add_field(name="Word Found", value=f"||{result['word']}||")
-        await log_channel.send(embed=embed)
-        await message.delete()
+        """Records the filtered event in Supabase for staff review."""
+        try:
+            payload = {
+                "user_id": str(message.author.id),
+                "username": str(message.author),
+                "content": message.content,
+                "reason": result.get("reason"),
+                "source": result.get("source"),
+                "channel_id": str(message.channel.id)
+            }
+            # Ensure your 'violation_logs' table exists in Supabase
+            await self.bot.db.run_query(
+                "INSERT INTO violation_logs (user_id, username, content, reason, source, channel_id) VALUES ($1, $2, $3, $4, $5, $6)",
+                payload["user_id"], payload["username"], payload["content"], 
+                payload["reason"], payload["source"], payload["channel_id"]
+            )
+        except Exception as e:
+            print(f"❌ Failed to log violation: {e}")
