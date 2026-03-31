@@ -3,17 +3,25 @@ class DispatcherService:
         self.bot = bot
 
     async def handle_message(self, message):
-        # 1. Ignore bots
+        # 1. Ignore bots (Safety first)
         if message.author.bot: 
             return
-        # Update Game Channel Heartbeat
+
+        # 2. Update Game Channel Heartbeat (For your sensor stats)
         self.bot.sensor.record_activity(message.channel.id)
-        # 2. Run your # $ * Analysis
+
+        # 3. Admin Bypass (So you don't get filtered by your own bot)
+        if message.author.guild_permissions.administrator:
+            await self.bot.process_commands(message)
+            return
+
+        # 4. Context Analysis (# $ *)
         result = await self.bot.context.analyze(message)
         
-        if result and result["verdict"] == "INAPPROPRIATE":
+        if result and result.get("verdict") == "INAPPROPRIATE":
             await self.bot.context.log_violation(message, result)
-            return # Stop here so the command doesn't run
+            return # 🛑 STOP here. Do not process the command.
 
-        # 3. CRITICAL: This is what makes !commands work
+        # 5. CRITICAL: The "Bridge"
+        # If the message is clean, this makes !commands and /commands work.
         await self.bot.process_commands(message)
