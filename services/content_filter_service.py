@@ -1,5 +1,6 @@
 import re
 import discord
+import asyncio
 
 class ContentFilterService:
     def __init__(self, bot):
@@ -26,25 +27,28 @@ class ContentFilterService:
         return self._crawl(categories, text.lower())
 
     def _crawl(self, data, text):
-        # 1. Check Words
+        # 1. Check Words with Word Boundaries (\b) 
+        # This prevents "ass" from triggering on "classic"
         for word in data.get("Words", []):
-            if word.lower() in text:
+            pattern = rf"\b{re.escape(word.lower())}\b"
+            if re.search(pattern, text):
                 return word, "Violation"
         
-        # 2. Check Regex
+        # 2. Check Custom Regex
         for pattern in data.get("Regex", []):
             try:
                 if re.search(pattern, text, re.IGNORECASE):
                     return pattern, "Violation"
             except re.error:
-                continue # Skip invalid regex patterns
+                continue 
 
         # 3. Dive into Sub-categories
-        for name, val in data.get("Sub", {}).items():
-            res_w, res_cat = self._crawl(val, text)
-            if res_w: 
-                # Return the specific sub-category name if found
-                return res_w, name
+        if "Sub" in data:
+            for name, val in data["Sub"].items():
+                res_w, res_cat = self._crawl(val, text)
+                if res_w: 
+                    return res_w, name
+        
         return None, None
 
     def get_node(self, path: str):
@@ -53,7 +57,6 @@ class ContentFilterService:
         if not path: return current
 
         for part in path.split("/"):
-            # Check if part is a direct key or inside "Sub"
             if part in current:
                 current = current[part]
             elif isinstance(current, dict) and "Sub" in current and part in current["Sub"]:
@@ -63,20 +66,14 @@ class ContentFilterService:
         return current
 
     def get_all_paths(self):
-        """
-        Recursively finds all valid category paths in the tree.
-        Returns: ['Offensive', 'Offensive/Slurs', 'Geography/Flags']
-        """
+        """Recursively finds all valid category paths for Autocomplete."""
         categories = self.tree.get("ContentFilter", {}).get("Categories", {})
         paths = []
 
         def walk(data, current_path=""):
             for name, val in data.items():
-                # Build the path string
                 new_path = f"{current_path}/{name}" if current_path else name
                 paths.append(new_path)
-                
-                # If there are sub-categories, walk deeper
                 if isinstance(val, dict) and "Sub" in val:
                     walk(val["Sub"], new_path)
 
