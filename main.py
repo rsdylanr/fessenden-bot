@@ -69,7 +69,6 @@ class FessendenBot(commands.Bot):
         self.stats.record_message(message.author.id)
         self.sensor.record_activity(message.channel.id)
         await self.dispatcher.handle_message(message)
-        await self.process_commands(message)
 
     # --- REST OF YOUR BACKGROUND LOOPS & COG LOADING LOGIC ---
     async def load_all_extensions(self):
