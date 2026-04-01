@@ -1,0 +1,18 @@
+TODO
+--------------
+--------------------
+        Filter
+--------------------
+
+- Ensure the following measurements are taken
+- Ensure reverse text gets filtered example
+badword AND drowdab will get filter
+also wildcards so b#dw0rd get filtered
+
+
+Ensure Ability to add words to the filter via a owner/admin command
+
+- FULLY REDESIGN THE FILTER
+
+
+ENSURE /commands
