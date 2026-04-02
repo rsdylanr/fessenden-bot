@@ -4,7 +4,7 @@ import discord
 class ParsingService:
   def __init__(self, valid_numbers, valid_letters, valid_symbols, string)
   valid_numbers = [1,2,3,4,5,6,7,8,9,0]
-  valid_letters = [A,a,B,b,C,c,D,d,E,e,F,f,G,g,H,h,I,i,J,j,K,k,L,l,M,m,N,n,O,o,P,p,Q,q,R,r,S,s,T,t,U,u,V,v,W,w,X,x,Y,y,Z,z]
+  valid_letters = [A,a,B,b,C,c,D,d,E,e,F,f,G,g,H,h,I,i,J,j,K,k,L,l,M,m,N,n,O,o,P,p,Q,q,R,r,S,s,T,t,U,u,V,v,W,w,X,x,Y,y,Z,z] # Put In Quotes
   valid_operators = [+,-,/,*,(,)
   self.valid_numbers = valid_numbers
   self.valid_letters  = valid_letters
