@@ -1,0 +1,28 @@
+1. Natural Language Date & Duration Parsing
+
+Instead of forcing users to type !mute @user 3600, allow them to speak naturally. An advanced parser integrates a library like dateparser or maya.
+
+
+
+Inputs handled: 2h 30m, next Friday at 5pm, in two weeks, tomorrow noon.
+
+The Parser's Job: Convert those varied strings into a single UTC datetime object or a total number of seconds for your database.
+
+
+
+4. Smart "Fuzzy" Entity Matching
+
+Standard parsers fail if you misspell a name or channel. An advanced parser uses Fuzzy String Matching (Levenshtein distance).
+
+
+
+Input: !warn @user spamming in #genral (notice the typo in "general").
+
+The Parser's Job: It looks at the text #genral, realizes it doesn't exist, but finds #general is a 90% match. It automatically corrects the target or asks, "Did you mean #general?"
+
+
+
+
+
+
+
