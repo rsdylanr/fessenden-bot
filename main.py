@@ -6,6 +6,7 @@ import traceback
 from dotenv import load_dotenv
 
 # Service Imports
+from services.parsing_service import ParsingService
 from services.cloud_db_service import CloudDatabaseService as DatabaseService
 from services.points_service import PointsService
 from services.event_service import EventService
@@ -32,6 +33,7 @@ class FessendenBot(commands.Bot):
         
         # Initialize Core Services
         self.db = DatabaseService()
+        self.parsing = ParsingService(self)
         self.points = PointsService(self.db)
         self.events = EventService()
         self.calendar = CalendarService(self.db)
