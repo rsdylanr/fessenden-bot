@@ -2,3 +2,7 @@ discord.py
 aiosqlite
 python-dotenv
 asyncpg
+python-dateutil
+sympy
+unicodedata2
+msgpack
