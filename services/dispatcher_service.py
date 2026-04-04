@@ -4,61 +4,65 @@ import logging
 class DispatcherService:
     """
     Fessenden Framework: Central Orchestrator
-    Handles: Filter, Context Analysis (# $ *), and Command Execution.
+    Updated to leverage the 900-function Parsing Engine.
     """
     def __init__(self, bot):
         self.bot = bot
         self.logger = logging.getLogger("fessenden.dispatcher")
 
     async def handle_message(self, message):
-        """
-        Processes every incoming message to determine if it should 
-        be filtered or passed to the command processor.
-        """
-        # 1. GATEKEEPER: Ignore other bots to prevent loops
+        # 1. GATEKEEPER: Ignore bots
         if message.author.bot:
             return
 
-        # 2. SENSOR: Record activity for the game channel heartbeat
-        # This allows your stats_service to track which channels are active.
+        # --- 🛡️ PHASE 0: THE PURIFICATION LAYER ---
+        # Before we do ANYTHING, we run the message through the 900-function engine.
+        try:
+            # This handles ZWSP, Bidi-Overrides, and NFC Normalization
+            purified = self.bot.parsing.finalize_immutable_context(message.content)
+            
+            # Security Check: If the parser flags a nesting or Bidi threat, drop it.
+            if not purified["security"]["is_bidi_safe"] or not purified["security"]["is_nesting_safe"]:
+                self.logger.warning(f"🛡️ Blocked malicious input attempt from {message.author} (ID: {message.author.id})")
+                return
+
+            # Attach the purified data to the message object. 
+            # Now ANY cog can access message.purified['structure']['arguments']
+            message.purified = purified
+            
+        except Exception as e:
+            self.logger.error(f"❌ Critical Parsing Error: {e}")
+            # Fallback: if the parser fails, we continue with raw content for safety
+            message.purified = None
+
+        # 2. SENSOR: Record activity
         try:
             self.bot.sensor.record_activity(message.channel.id)
             self.bot.stats.record_message(message.author.id)
         except Exception as e:
-            print(f"⚠️ Sensor/Stats Error: {e}")
+            self.logger.error(f"⚠️ Sensor/Stats Error: {e}")
 
-        # 3. ADMIN BYPASS: If you are an admin, skip filtering
-        # This ensures the owner (you) never gets blocked from testing games.
+        # 3. ADMIN BYPASS: Owners skip filtering
         if message.author.guild_permissions.administrator:
             await self.bot.process_commands(message)
             return
 
         # 4. CONTEXT ANALYSIS: The '# $ *' Logic
-        # Wrapped in a 2-second timeout so a slow AI/DB doesn't silence the bot.
         try:
-            # Check if the message is Inappropriate
+            # We pass the message, which now carries the 'purified' attribute
             result = await asyncio.wait_for(
                 self.bot.context.analyze(message), 
                 timeout=2.0
             )
             
             if result and result.get("verdict") == "INAPPROPRIATE":
-                # Log the violation to your database
                 await self.bot.context.log_violation(message, result)
-                
-                # Optional: Send a silent warning or just return
-                # return (Stopping here prevents the !command from running)
                 return 
 
         except asyncio.TimeoutError:
-            # If analysis takes too long, we log it and let the command through
-            print(f"🕒 Dispatcher: Context Analysis timed out for {message.author}. Bypassing.")
+            self.logger.warning(f"🕒 Dispatcher: Context Analysis timeout for {message.author}.")
         except Exception as e:
-            # If the context service crashes, we still want the bot to work
-            print(f"❌ Dispatcher: Context Service Error: {e}")
+            self.logger.error(f"❌ Dispatcher: Context Service Error: {e}")
 
         # 5. THE BRIDGE: Execute Commands
-        # This is the final step that makes !country, !sync, etc., actually work.
         await self.bot.process_commands(message)
-
-# Note: Ensure this is the ONLY DispatcherService class in your project.
