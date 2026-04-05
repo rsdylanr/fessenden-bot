@@ -1,0 +1,117 @@
+This list is structured for a developer moving from basic `if message.content == "hello"` logic into high-performance, resilient architecture. 
+
+## EVERYTHING YOUR ADVANCED DISCORD PARSER NEEDS (AND DOESNT)
+
+### The "Stupid Not To" Essentials (Top 25)
+1. **The `bot.user` Check:** Ignore all messages from your own bot ID immediately.
+2. **The Global `bot` Check:** Ignore all messages where `message.author.bot` is True.
+3. **Async Everything:** Use `await` for all I/O (Database, API, Webhooks).
+4. **LRU Prefix Cache:** Don't hit the DB for the server prefix on every message; keep it in RAM.
+5. **Shlex Argument Parsing:** Use a shell-like splitter so `!play "song name with spaces"` works.
+6. **Intent Management:** Explicitly enable `Message Content Intent` (it’s a gatekeeper now).
+7. **The "Mention-as-Prefix":** Always allow users to ping the bot as a prefix (essential if they forget their custom prefix).
+8. **NFKD Normalization:** Convert Unicode (like 𝔅𝔞𝔡) to standard Latin (Bad) before parsing.
+9. **Zero-Width Character Stripping:** Remove `\u200b` and other invisibles before the parser sees them.
+10. **Lowercase Normalization:** `.lower()` your command trigger check, but keep the *arguments* case-sensitive.
+11. **Regex Timeouts:** Never run a regex without a `timeout` parameter to prevent ReDoS (Regex Denial of Service).
+12. **The "Heartbeat" Protector:** Offload heavy math or file parsing to `run_in_executor`.
+13. **Cooldowns (Rate Limiting):** Implement per-user and per-command cooldowns at the parser level.
+14. **Error Handling (The "Catch-All"):** A global `on_command_error` listener to prevent the whole script from crashing.
+15. **Message Length Check:** Immediately discard anything over 2000 chars (or 4000 for Nitro) before processing.
+16. **Trim Whitespace:** `.strip()` the start and end of every message.
+17. **Blacklisted User/Server Check:** A fast "early exit" for banned IDs before heavy logic starts.
+18. **Dependency Injection:** Pass your DB pool or Config object into your parser/Cogs.
+19. **Command Alias Support:** Allow `!h` to trigger `!help` without duplicating code.
+20. **Context Objects:** Wrap your data into a `CustomContext` class for cleaner method calls (like `ctx.reply()`).
+21. **Logging (Audit Trail):** Log every command executed (but **never** the user's private tokens/data).
+22. **Permission Pre-checks:** Check `has_permissions` before running the expensive part of a command.
+23. **Graceful Shutdown:** Handle `SIGINT` to close DB connections properly.
+24. **Help Command Auto-Generation:** Don't hardcode help text; parse your docstrings.
+25. **Environment Variables:** Use `.env` for tokens; never hardcode them in the parser file.
+
+---
+
+### The Functional Core (Items 26-60)
+26. **Fuzzy Matching:** Suggest "Did you mean `!play`?" if they type `!paly`.
+27. **Multi-Prefix Support:** Allow servers to have `!`, `?`, and `.` simultaneously.
+28. **Argv Validation:** Check if `len(args)` is correct before calling the function.
+29. **Type Hinting:** Use Python type hints (or TS types) to auto-convert strings to `int`, `Member`, or `TextChannel`.
+30. **Greedy Arguments:** A way to say "take the rest of the message as one string."
+31. **Flag Parsing:** Support `--force` or `--silent` style flags at the end of commands.
+32. **Attachment Parsing:** Check `message.attachments` if a command requires an image.
+33. **Sticker Filtering:** Decide if your bot should ignore or acknowledge Stickers.
+34. **Thread Awareness:** Ensure your parser knows if it's in a Thread vs. a Channel.
+35. **DM Filtering:** Explicitly block or allow commands via Direct Messages.
+36. **Webhook Filtering:** `message.webhook_id` check (webhooks aren't technically "bots").
+37. **Cooldown "Bypass" Roles:** Allow Admins to ignore rate limits.
+38. **Dynamic Help:** Only show help for commands the user actually has permissions to use.
+39. **Internal Latency Tracking:** Measure how long the parse took and log it.
+40. **Database Pooling:** Don't open/close a connection per message; keep a pool open.
+41. **Markdown Stripping:** A toggle to remove `**`, `_`, and `||` before checking for bad words.
+42. **Spoilers Check:** Parse inside `||spoiler||` tags for hidden automod violations.
+43. **Invite Link Detection:** Regex to catch `discord.gg/` links.
+44. **Emoji Normalization:** Convert `<:name:id>` to `:name:` for text analysis.
+45. **Multi-Language Support:** A way to swap the "Response Strings" based on server locale.
+46. **Argument Default Values:** `async def kick(ctx, reason="No reason provided")`.
+47. **Interactive Menus:** Support for buttons/select menus as "follow-ups" to a parse.
+48. **Sub-command Groups:** `!config prefix set` (nested logic).
+49. **Bot-Mention Detection:** Not just at the start, but anywhere in the message.
+50. **System Message Ignore:** Ignore "User joined the server" or "User boosted" messages.
+51. **Reference Parsing:** Check `message.reference` if the user is replying to a specific message.
+52. **Embed Content Parsing:** (Rare) Scanning the text *inside* an embed sent by another bot.
+53. **Role-Mention Check:** Prevent users from tricking the bot into pinging `@everyone`.
+54. **Clean Content:** Use `message.clean_content` to see what the user actually sees (mentions resolved to names).
+55. **Custom Converters:** Writing code that turns a "Username#0001" string into a User object.
+56. **Parser Middleware:** Code that runs *after* the prefix is found but *before* the command runs.
+57. **Stateful Conversations:** A dictionary that tracks if a user is currently in a "setup wizard."
+58. **TTL on State:** Automatically delete the "setup wizard" data after 5 minutes of inactivity.
+59. **Metrics Export:** Sending "commands per minute" data to something like Prometheus.
+60. **Shard Awareness:** Ensuring the parser knows which shard it's on for debugging.
+
+---
+
+### The Advanced/Niche Stuff (Items 61-100)
+61. **Homoglyph Mapping:** A dictionary that maps `4` to `a` and `0` to `o` for advanced filtering.
+62. **Levenshtein Distance:** A math algorithm to check how "close" a word is to a blacklisted word.
+63. **Semantic Analysis:** Using AI to check the *intent* of a message rather than just keywords.
+64. **Tokenization:** Breaking the message into a list of "tokens" (lexing) before parsing.
+65. **Recursive Parsing:** Allowing commands to call other commands (dangerous but powerful).
+66. **Priority Queues:** Processing "Admin" commands faster than "Fun" commands.
+67. **Packet Inspection:** Using a library to see the raw WebSocket data if the high-level library fails.
+68. **Anti-Spam "Heat Map":** Tracking how many messages a user sends across *all* servers.
+69. **OCR Integration:** Parsing text *inside* uploaded images using Tesseract.
+70. **Phishing Link Database:** Checking URLs against a real-time "bad URL" API.
+71. **Cross-Server Sync:** Sharing a "user is a scammer" flag across all servers the bot is in.
+72. **Custom Domain Allowlist:** Only allowing specific links (e.g., `google.com`).
+73. **Self-Correction Logic:** If a command fails, the bot asks "Did you mean...?" and lets them click a button.
+74. **Automated Documentation:** A script that updates your GitHub README with new commands automatically.
+75. **Mocking/Testing Suite:** A way to "fake" a message to test your parser without opening Discord.
+76. **Hot-Reloading:** The ability to update the parser logic without taking the bot offline (Cogs).
+77. **Permission "Calculated" Cache:** Storing the final result of complex role calculations.
+78. **Invite-Code Metadata:** Parsing which user created the invite link used by a joiner.
+79. **Voice-State Parsing:** Acknowledging commands only if the user is in a Voice Channel.
+80. **Zalgo Level Detection:** Counting combining marks to auto-delete "glitch" text.
+81. **Language Detection:** Identifying if a message is in Spanish, Japanese, etc.
+82. **Mass-Mention Thresholds:** Triggering an alert if more than 5 unique pings are in one message.
+83. **Duplication Hashing:** Hashing message content to catch "copy-paste" spam.
+84. **Message Edit Tracking:** Parsing the *new* content of an edited message.
+85. **Reactions as Commands:** Parsing a "thumbs up" as a "yes" command.
+86. **Component ID Namespacing:** Ensuring Button IDs (`btn_123`) don't collide between users.
+87. **Slow-Mode Compliance:** Ensuring the bot doesn't send messages faster than the channel's slow-mode.
+88. **Bypass Logic for "Staff":** Hardcoded IDs that can never be filtered.
+89. **Ephemeral Response Toggle:** Deciding if a response should be "hidden" (Slash commands only).
+90. **External Hooking:** Letting a website trigger a "message" in the bot's parser.
+91. **Cluster Management:** For bots in 10,000+ servers, splitting the parser across multiple servers.
+92. **Memory Profiling:** Regularly logging how much RAM the prefix cache is taking.
+93. **Circuit Breakers:** Automatically disabling a command if it errors 5 times in a row.
+94. **User-Specific Prefixes:** Letting a user choose their own prefix that works globally.
+95. **Ghost Ping Detection:** Parsing deleted messages to see if someone pinged and then deleted it.
+96. **Link Shortener Expansion:** Unrolling `bit.ly` links to see the real destination.
+97. **Payload Compression:** Tuning the Gateway to send less data to save bandwidth.
+98. **Timezone Parsing:** Turning "at 5pm" into a Unix timestamp based on user settings.
+99. **Emoji-only Mode:** A parser that rejects any message containing actual letters.
+100. **The "Easter Egg" Parser:** A low-priority listener for secret phrases that don't use prefixes.
+
+How's that for a start? Since you're using **aiosqlite** and **Cogs**, items **#5, #12, and #76** are going to be your best friends. 
+
+Do you want to dive into the code for a specific one of these, like the **NFKD Normalization** or the **LRU Cache**?
