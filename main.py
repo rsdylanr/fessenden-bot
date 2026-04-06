@@ -20,6 +20,7 @@ from services.stats_service import StatsService
 from services.message_service import MessageService
 from services.info_service import InfoService
 from services.formatting_service import FormattingService
+from services.stage_service import StageCoordinationService
 load_dotenv()
 
 class FessendenBot(commands.Bot):
@@ -48,6 +49,8 @@ class FessendenBot(commands.Bot):
         self.message_service = MessageService(self)
         self.info = InfoService(self)
         self.formatter = FormattingService(self)
+        self.stage_service = StageCoordinationService(self)
+        
 
     async def setup_hook(self):
         """Initializes database, loops, and cogs on startup."""
